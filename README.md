@@ -22,9 +22,13 @@
 
 ## Database Tables
 
-- Table `users` - contains xx yy zz
-- Table `something` - contains ww qq ss
-- ...
+Table users - contains the registered users with their credentials (username and bcrypt-hashed password)
+Table lines - contains the metro lines of the network (name)
+Table stations - contains all the stations of the network (name)
+Table line_stations - contains the associations between lines and stations, including the position of each station along the line; used to derive valid segments and interchange stations
+Table events - contains the random events that can occur during a journey segment, each with a description and a coin effect (from -4 to +4)
+Table games - contains all the games played by registered users, including the assigned start and end stations, the final score, and the timestamps of creation and completion
+Table game_steps - contains the individual steps of each completed game, storing the from/to stations, the event that occurred, and the coin total after each step
 
 ## Main React Components
 
