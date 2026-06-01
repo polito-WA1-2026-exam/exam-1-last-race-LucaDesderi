@@ -1,0 +1,14 @@
+### Log in
+POST http://localhost:3001/api/sessions
+Content-Type: application/json
+
+{
+  "username": "Dorian",
+  "password": "password123"
+}
+
+### Check session
+GET http://localhost:3001/api/sessions/current
+
+### Logout
+DELETE http://localhost:3001/api/sessions/current
