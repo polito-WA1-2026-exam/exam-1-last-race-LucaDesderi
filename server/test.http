@@ -12,3 +12,20 @@ GET http://localhost:3001/api/sessions/current
 
 ### Logout
 DELETE http://localhost:3001/api/sessions/current
+
+### Network (devi essere loggato)
+GET http://localhost:3001/api/network
+
+### Start game (devi essere loggato)
+POST http://localhost:3001/api/games
+
+### Submit route
+POST http://localhost:3001/api/games/7/submit
+Content-Type: application/json
+
+{
+  "route": [10, 9, 3, 2, 7]
+}
+
+### Leaderboard
+GET http://localhost:3001/api/leaderboard
