@@ -29,7 +29,7 @@ const STATION_COORDS = {
   17: { x: 830, y: 510 },
 }
 
-function NetworkMap({ network, showLines = true, highlightedRoute = [], startStationId = null, endStationId = null }) {
+function NetworkMap({ network, showLines = true, highlightedRoute = [], startStationId = null, endStationId = null, executionRoute = [], executionStep = 0 }) {
   // calcola gli interscambi: stazioni che appaiono in più di una linea
   const interchangeIds = useMemo(() => {
     if (!network) return new Set();
@@ -46,6 +46,13 @@ function NetworkMap({ network, showLines = true, highlightedRoute = [], startSta
         .map(([id]) => Number(id))
     );
   }, [network]);
+  const getRouteSegmentColor = (fromId, toId) => {
+    const seg = network?.segments.find(s =>
+      (s.from_id === fromId && s.to_id === toId) ||
+      (s.from_id === toId && s.to_id === fromId)
+    );
+    return seg ? (LINE_COLORS[seg.line_name] || '#fff') : '#fff';
+  };
   const segmentGroups = useMemo(() => {
   if (!network) return {};
   const groups = {};
@@ -174,6 +181,39 @@ function NetworkMap({ network, showLines = true, highlightedRoute = [], startSta
           </g>
         );
       })}
+
+      {/* EXECUTION ROUTE — segmenti colorati step by step */}
+      {executionRoute.length > 1 && executionRoute.map((id, i) => {
+        if (i === executionRoute.length - 1) return null;
+        const from = STATION_COORDS[id];
+        const to   = STATION_COORDS[executionRoute[i + 1]];
+        if (!from || !to) return null;
+        const isCompleted = i < executionStep;
+        const color = getRouteSegmentColor(id, executionRoute[i + 1]);
+        return (
+          <line
+            key={`exec-${i}`}
+            x1={from.x} y1={from.y}
+            x2={to.x}   y2={to.y}
+            stroke={isCompleted ? color : '#555'}
+            strokeWidth={isCompleted ? 8 : 4}
+            opacity={isCompleted ? 1 : 0.3}
+          />
+        );
+      })}
+
+      {/* TRAIN — pallino che si sposta */}
+      {executionRoute.length > 0 && (() => {
+        const idx = Math.min(executionStep, executionRoute.length - 1);
+        const pos  = STATION_COORDS[executionRoute[idx]];
+        if (!pos) return null;
+        return (
+          <>
+            <circle cx={pos.x} cy={pos.y} r={22} fill="#ffd700" opacity={0.15} />
+            <circle cx={pos.x} cy={pos.y} r={13} fill="#ffd700" stroke="#fff" strokeWidth={2.5} />
+          </>
+        );
+      })()}
 
       {/* LEGENDA LINEE */}
       {showLines && (

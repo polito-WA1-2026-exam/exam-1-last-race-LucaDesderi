@@ -1,26 +1,51 @@
 import { useState, useEffect, useRef } from 'react'
-import { Container, Button, Row, Col, Badge, ListGroup } from 'react-bootstrap'
+import { Container, Button, Row, Col, Badge, ListGroup, Modal } from 'react-bootstrap'
 import { getNetwork, startGame, submitRoute } from '../api/api'
 import NetworkMap from '../components/NetworkMap'
 
 function GamePage() {
-  
   const [network, setNetwork] = useState(null);
   const [phase, setPhase] = useState('setup');
   const [game, setGame] = useState(null);
   const [route, setRoute] = useState([]);
   const [timeLeft, setTimeLeft] = useState(90);
-  const timerRef = useRef(null);
   const [steps, setSteps] = useState([]);
-  const [currentStep, setCurrentStep] = useState(0);
   const [finalScore, setFinalScore] = useState(null);
   const [routeValid, setRouteValid] = useState(null);
+  const [execStep, setExecStep] = useState(0);
+  const [showEvent, setShowEvent] = useState(false);
+  const [closingEvent, setClosingEvent] = useState(false);
+  const [eventLog, setEventLog] = useState([]);
+
+  const timerRef = useRef(null);
+  const routeRef = useRef([]);
+  const gameRef  = useRef(null);
+
+  // tieni i ref aggiornati ad ogni render
+  useEffect(() => { routeRef.current = route; }, [route]);
+  useEffect(() => { gameRef.current  = game;  }, [game]);
 
   useEffect(() => {
     getNetwork()
       .then(data => setNetwork(data))
       .catch(err => console.error(err));
   }, []);
+
+  // funzione di submit separata che usa i ref — nessuna stale closure
+  const doSubmit = async (currentRoute, currentGame) => {
+    clearInterval(timerRef.current);
+    if (!currentGame) return;
+    try {
+      const result = await submitRoute(currentGame.gameId, currentRoute);
+      setRouteValid(result.valid);
+      setFinalScore(result.score);
+      setSteps(result.steps || []);
+      setExecStep(0);
+      setPhase('execution');
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // timer
   useEffect(() => {
@@ -30,7 +55,7 @@ function GamePage() {
       setTimeLeft(t => {
         if (t <= 1) {
           clearInterval(timerRef.current);
-          handleSubmit();
+          doSubmit(routeRef.current, gameRef.current);
           return 0;
         }
         return t - 1;
@@ -40,12 +65,27 @@ function GamePage() {
     return () => clearInterval(timerRef.current);
   }, [phase]);
 
+  // step 1: quando entra in execution, muovi il treno alla prima stazione dopo 800ms
+  useEffect(() => {
+    if (phase !== 'execution' || !routeValid || steps.length === 0) return;
+    const t = setTimeout(() => setExecStep(1), 800);
+    return () => clearTimeout(t);
+  }, [phase, routeValid, steps]);
+
+  // step 2: quando execStep cambia, mostra il popup dopo 700ms (tempo animazione treno)
+  useEffect(() => {
+    if (phase !== 'execution' || execStep === 0 || !routeValid) return;
+    const t = setTimeout(() => setShowEvent(true), 700);
+    return () => clearTimeout(t);
+  }, [execStep, phase, routeValid]);
+
   const handleStartPlanning = async () => {
     try {
       const newGame = await startGame();
       setGame(newGame);
       setRoute([newGame.startStation.id]);
       setTimeLeft(90);
+      setEventLog([]);
       setPhase('planning');
     } catch (err) {
       console.error(err);
@@ -53,7 +93,6 @@ function GamePage() {
   };
 
   const handleSegmentClick = (fromId, toId) => {
-    // il segmento deve partire dall'ultima stazione del percorso
     const lastStation = route[route.length - 1];
     if (fromId === lastStation)
       setRoute(r => [...r, toId]);
@@ -66,20 +105,24 @@ function GamePage() {
       setRoute(r => r.slice(0, -1));
   };
 
-  const handleSubmit = async () => {
-  clearInterval(timerRef.current);
-  try {
-    const result = await submitRoute(game.gameId, route);
-    setRouteValid(result.valid);
-    setFinalScore(result.score);
-    setSteps(result.steps || []);
-    setPhase('execution');
-  } catch (err) {
-    console.error(err);
-  }
-};
+  const handleSubmit = () => {
+    doSubmit(routeRef.current, gameRef.current);
+  };
 
-  // segmenti disponibili: quelli che partono o arrivano all'ultima stazione
+  const handleEventContinue = () => {
+    setClosingEvent(true);
+    setTimeout(() => {
+      setEventLog(log => [...log, steps[execStep - 1]]);
+      setClosingEvent(false);
+      setShowEvent(false);
+      if (execStep < steps.length) {
+        setTimeout(() => setExecStep(s => s + 1), 400);
+      } else {
+        setTimeout(() => setPhase('result'), 600);
+      }
+    }, 250);
+  };
+
   const lastStation = route[route.length - 1];
   const availableSegments = network
     ? network.segments.filter(seg =>
@@ -111,12 +154,8 @@ function GamePage() {
         <>
           <Row className="mb-3 align-items-center">
             <Col>
-              <span className="me-3">
-                🚉 From: <strong>{game.startStation.name}</strong>
-              </span>
-              <span>
-                🏁 To: <strong>{game.endStation.name}</strong>
-              </span>
+              <span className="me-3">🚉 From: <strong>{game.startStation.name}</strong></span>
+              <span>🏁 To: <strong>{game.endStation.name}</strong></span>
             </Col>
             <Col className="text-end">
               <Badge bg={timeLeft <= 10 ? 'danger' : 'dark'} style={{ fontSize: '1.1em' }}>
@@ -182,94 +221,190 @@ function GamePage() {
         </>
       )}
 
-      {phase === 'execution' && (
+      {phase === 'execution' && game && (
         <>
-          <Row className="mb-3">
+          <Row className="mb-3 align-items-center">
             <Col>
-              <span className="me-3">
-                🚉 From: <strong>{game.startStation.name}</strong>
-              </span>
-              <span>
-                🏁 To: <strong>{game.endStation.name}</strong>
-              </span>
+              <span className="me-3">🚉 From: <strong>{game.startStation.name}</strong></span>
+              <span>🏁 To: <strong>{game.endStation.name}</strong></span>
+            </Col>
+            <Col className="text-end">
+              <Badge bg="dark" style={{ fontSize: '1em' }}>
+                🪙 {execStep > 0 ? steps[execStep - 1]?.coinsAfter : 20}
+              </Badge>
             </Col>
           </Row>
 
-          {!routeValid
-            ? (
-              <div className="text-center mt-5">
-                <h4 className="text-danger">❌ Invalid or incomplete route!</h4>
-                <p>You lose all your coins.</p>
-                <Button
-                  className="mt-3"
-                  style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
-                  onClick={() => setPhase('result')}
-                >
-                  See Result
-                </Button>
-              </div>
-            )
-            : (
-              <Row>
-                <Col md={8}>
-                  <NetworkMap
-                    network={network}
-                    showLines={true}
-                    highlightedRoute={route.slice(0, currentStep + 2)}
-                  />
-                </Col>
-                <Col md={4}>
-                  <h6>🪙 Coins: <strong>{currentStep === 0 ? 20 : steps[currentStep - 1]?.coinsAfter}</strong></h6>
-                  <ListGroup style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                    {steps.slice(0, currentStep).map((step, i) => (
-                      <ListGroup.Item key={i} style={{ fontSize: '0.85em' }}>
-                        <div>
-                          <strong>
-                            {network.stations.find(s => s.id === step.fromStation)?.name}
-                            {' → '}
-                            {network.stations.find(s => s.id === step.toStation)?.name}
-                          </strong>
-                        </div>
-                        <div className="text-muted">{step.eventDescription}</div>
-                        <div>
-                          <Badge bg={step.eventEffect >= 0 ? 'success' : 'danger'}>
-                            {step.eventEffect >= 0 ? '+' : ''}{step.eventEffect} 🪙
-                          </Badge>
-                          <span className="ms-2">→ {step.coinsAfter} 🪙</span>
-                        </div>
-                      </ListGroup.Item>
-                    ))}
-                  </ListGroup>
+          {!routeValid ? (
+            <div className="text-center mt-5">
+              <h4 className="text-danger">❌ Invalid or incomplete route!</h4>
+              <p>You lose all your coins.</p>
+              <Button
+                className="mt-3"
+                style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
+                onClick={() => setPhase('result')}
+              >
+                See Result
+              </Button>
+            </div>
+          ) : (
+            <>
+              <NetworkMap
+                network={network}
+                showLines={false}
+                startStationId={game.startStation.id}
+                endStationId={game.endStation.id}
+                executionRoute={route}
+                executionStep={execStep}
+              />
 
-                  {currentStep < steps.length
-                    ? (
+              {/* POPUP EVENTO */}
+              <Modal
+                show={showEvent && !!steps[execStep - 1]}
+                centered
+                backdrop="static"
+                keyboard={false}
+              >
+                {steps[execStep - 1] && (
+                  <>
+                    <Modal.Header style={{ background: '#1a1a2e', borderBottom: '1px solid #333', color: '#fff' }}>
+                      <Modal.Title style={{ fontSize: '0.95em', color: '#888' }}>
+                        {network.stations.find(s => s.id === steps[execStep - 1].fromStation)?.name}
+                        {' ➔ '}
+                        {network.stations.find(s => s.id === steps[execStep - 1].toStation)?.name}
+                      </Modal.Title>
+                    </Modal.Header>
+
+                    <Modal.Body style={{ background: '#1a1a2e', color: '#fff', textAlign: 'center', padding: '2rem' }}>
+                      <p style={{ fontSize: '1.1em', lineHeight: 1.6 }}>
+                        {steps[execStep - 1].eventDescription}
+                      </p>
+                      <div style={{
+                        fontSize: '2em',
+                        fontWeight: 'bold',
+                        color: steps[execStep - 1].eventEffect >= 0 ? '#2ecc71' : '#e74c3c',
+                        margin: '1rem 0'
+                      }}>
+                        {steps[execStep - 1].eventEffect >= 0 ? '+' : ''}
+                        {steps[execStep - 1].eventEffect} 🪙
+                      </div>
+                      <div style={{ color: '#aaa', fontSize: '0.95em' }}>
+                        Total: <strong style={{ color: '#fff' }}>{steps[execStep - 1].coinsAfter} 🪙</strong>
+                      </div>
+                    </Modal.Body>
+
+                    <Modal.Footer style={{ background: '#1a1a2e', borderTop: '1px solid #333', justifyContent: 'center' }}>
                       <Button
-                        className="mt-3 w-100"
-                        style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
-                        onClick={() => setCurrentStep(s => s + 1)}
+                        onClick={handleEventContinue}
+                        style={{ backgroundColor: '#ffd700', border: 'none', color: '#1a1a2e', fontWeight: 'bold', padding: '0.5rem 2rem' }}
                       >
-                        Next Step ➡
+                        {execStep < steps.length ? 'Continue ➡' : 'See Result 🏁'}
                       </Button>
-                    )
-                    : (
-                      <Button
-                        className="mt-3 w-100"
-                        style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
-                        onClick={() => setPhase('result')}
-                      >
-                        See Result 🏁
-                      </Button>
-                    )
-                  }
-                </Col>
-              </Row>
-            )
-          }
+                    </Modal.Footer>
+                  </>
+                )}
+              </Modal>
+
+              {/* EVENT LOG */}
+              {eventLog.length > 0 && (
+                <div className="mt-4">
+                  <h6 style={{ color: '#aaa' }}>Event Log</h6>
+                  <Row className="g-2">
+                    {eventLog.map((ev, i) => (
+                      <Col key={i} xs={12} md={6} lg={4}>
+                        <div
+                          className="event-log-item p-2 rounded"
+                          style={{ background: '#1a1a2e', border: '1px solid #333', fontSize: '0.82em', color: '#ccc' }}
+                        >
+                          <div style={{ color: '#666', marginBottom: '0.2rem' }}>
+                            {network.stations.find(s => s.id === ev.fromStation)?.name}
+                            {' → '}
+                            {network.stations.find(s => s.id === ev.toStation)?.name}
+                          </div>
+                          <div style={{ marginBottom: '0.3rem' }}>{ev.eventDescription}</div>
+                          <span style={{ fontWeight: 'bold', color: ev.eventEffect >= 0 ? '#2ecc71' : '#e74c3c' }}>
+                            {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
+                          </span>
+                          <span style={{ color: '#888', marginLeft: '0.5rem' }}>
+                            → {ev.coinsAfter} 🪙
+                          </span>
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
 
-      {phase === 'result' && (
-        <p>Result phase — coming soon</p>
+      {phase === 'result' && game && (
+        <div className="text-center mt-5">
+          <h2>🏁 Race Complete!</h2>
+          <p className="text-muted">
+            {game.startStation.name} → {game.endStation.name}
+          </p>
+
+          <div style={{
+            display: 'inline-block',
+            background: '#1a1a2e',
+            border: '1px solid #444',
+            borderRadius: '18px',
+            padding: '2rem 3rem',
+            margin: '1.5rem 0'
+          }}>
+            <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '0.5rem' }}>Final Score</div>
+            <div style={{ fontSize: '3.5em', fontWeight: 'bold', color: '#ffd700' }}>
+              {finalScore} 🪙
+            </div>
+          </div>
+
+          {eventLog.length > 0 && (
+            <div className="mt-3 text-start">
+              <h6 style={{ color: '#aaa' }}>Event Log</h6>
+              <Row className="g-2">
+                {eventLog.map((ev, i) => (
+                  <Col key={i} xs={12} md={6} lg={4}>
+                    <div
+                      className="event-log-item p-2 rounded"
+                      style={{ background: '#1a1a2e', border: '1px solid #333', fontSize: '0.82em', color: '#ccc' }}
+                    >
+                      <div style={{ color: '#666', marginBottom: '0.2rem' }}>
+                        {network.stations.find(s => s.id === ev.fromStation)?.name}
+                        {' → '}
+                        {network.stations.find(s => s.id === ev.toStation)?.name}
+                      </div>
+                      <div style={{ marginBottom: '0.3rem' }}>{ev.eventDescription}</div>
+                      <span style={{ fontWeight: 'bold', color: ev.eventEffect >= 0 ? '#2ecc71' : '#e74c3c' }}>
+                        {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
+                      </span>
+                      <span style={{ color: '#888', marginLeft: '0.5rem' }}>
+                        → {ev.coinsAfter} 🪙
+                      </span>
+                    </div>
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          )}
+
+          <div className="mt-4 d-flex gap-3 justify-content-center">
+            <Button
+              onClick={handleStartPlanning}
+              style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
+            >
+              Play Again
+            </Button>
+            <Button
+              as="a"
+              href="/leaderboard"
+              variant="warning"
+            >
+              🏆 Leaderboard
+            </Button>
+          </div>
+        </div>
       )}
     </Container>
   );
