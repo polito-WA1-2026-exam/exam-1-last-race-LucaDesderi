@@ -6,7 +6,7 @@ function HomePage() {
   const { user } = useUser();
 
   return (
-    <Container className="mt-5">
+    <Container fluid className="mt-4 px-4">
       <h1>🚇 Last Race</h1>
       <p className="lead">
         Welcome to Last Race! Plan your route through the metro network before time runs out.

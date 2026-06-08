@@ -11,12 +11,16 @@ import { getCurrentUser } from './api/api'
 
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getCurrentUser()
       .then(u => setUser(u))
-      .catch(() => setUser(null));
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) return null;
 
   return (
     <UserContext.Provider value={{ user, setUser }}>

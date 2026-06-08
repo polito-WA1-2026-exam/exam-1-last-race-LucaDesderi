@@ -13,7 +13,7 @@ function LeaderboardPage() {
   }, []);
 
   return (
-    <Container className="mt-5">
+    <Container fluid className="mt-4 px-4">
       <h2>Leaderboard</h2>
       {error && <p className="text-danger">{error}</p>}
       <Table striped bordered hover className="mt-3">

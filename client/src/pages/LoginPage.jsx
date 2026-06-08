@@ -25,7 +25,7 @@ function LoginPage() {
   };
 
   return (
-    <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '80vh' }}>
+    <Container fluid className="d-flex justify-content-center align-items-center" style={{ minHeight: '80vh' }}>
       <Card style={{ width: '400px' }} className="p-4">
         <Card.Title className="mb-4 text-center">🚇 Last Race — Login</Card.Title>
         {error && <Alert variant="danger">{error}</Alert>}

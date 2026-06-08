@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Container, Button, Row, Col, Badge, ListGroup, Modal } from 'react-bootstrap'
 import { getNetwork, startGame, submitRoute } from '../api/api'
 import NetworkMap from '../components/NetworkMap'
+import { useNavigate } from 'react-router-dom'
 
 function GamePage() {
   const [network, setNetwork] = useState(null);
@@ -20,6 +21,7 @@ function GamePage() {
   const timerRef = useRef(null);
   const routeRef = useRef([]);
   const gameRef  = useRef(null);
+  const navigate = useNavigate();
 
   // tieni i ref aggiornati ad ogni render
   useEffect(() => { routeRef.current = route; }, [route]);
@@ -137,7 +139,7 @@ function GamePage() {
     : [];
 
   return (
-    <Container className="mt-4">
+    <Container fluid className="mt-4 px-4">
       <h2>🚇 Last Race</h2>
 
       {phase === 'setup' && (
@@ -403,9 +405,8 @@ function GamePage() {
               Play Again
             </Button>
             <Button
-              as="a"
-              href="/leaderboard"
               variant="warning"
+              onClick={() => navigate('/leaderboard')}
             >
               🏆 Leaderboard
             </Button>

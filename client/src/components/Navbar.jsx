@@ -19,7 +19,7 @@ function Navbar() {
 
   return (
     <BsNavbar bg="dark" variant="dark" expand="lg">
-      <Container>
+      <Container fluid className="px-4">
         <BsNavbar.Brand as={Link} to="/">🚇 Last Race</BsNavbar.Brand>
         <Nav className="me-auto">
           {user && <>

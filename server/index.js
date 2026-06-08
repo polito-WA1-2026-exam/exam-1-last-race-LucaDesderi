@@ -147,7 +147,7 @@ app.post("/api/games/:id/submit", isLoggedIn, async (req, res) => {
     const route = req.body.route; // array di station id es. [8, 13, 14, 9]
 
     // validazione input base
-    if (!Array.isArray(route) || route.length < 2) {
+    if (!Array.isArray(route) || route.length < 1) {
       return res.status(422).json({ error: "Invalid route format." });
     }
 
