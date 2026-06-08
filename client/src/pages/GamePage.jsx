@@ -85,6 +85,12 @@ function GamePage() {
       setGame(newGame);
       setRoute([newGame.startStation.id]);
       setTimeLeft(90);
+      setSteps([]);
+      setFinalScore(null);
+      setRouteValid(null);
+      setExecStep(0);
+      setShowEvent(false);
+      setClosingEvent(false);
       setEventLog([]);
       setPhase('planning');
     } catch (err) {

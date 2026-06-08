@@ -175,9 +175,11 @@ app.post("/api/games/:id/submit", isLoggedIn, async (req, res) => {
     // recupera interscambi (stazioni con più di una linea)
     const interchangeSet = new Set();
     const lineCount = {};
-    for (const { from_id, line_id } of segments) {
+    for (const { from_id, to_id, line_id } of segments) {
       if (!lineCount[from_id]) lineCount[from_id] = new Set();
       lineCount[from_id].add(line_id);
+      if (!lineCount[to_id]) lineCount[to_id] = new Set();
+      lineCount[to_id].add(line_id);
     }
     for (const [stationId, lines] of Object.entries(lineCount)) {
       if (lines.size > 1) interchangeSet.add(Number(stationId));
