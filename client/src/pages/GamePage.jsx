@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Container, Button, Row, Col, Badge, ListGroup, Modal } from 'react-bootstrap'
+import { Modal } from 'react-bootstrap'
 import { getNetwork, startGame, submitRoute } from '../api/api'
 import NetworkMap from '../components/NetworkMap'
 import { useNavigate } from 'react-router-dom'
@@ -23,7 +23,6 @@ function GamePage() {
   const gameRef  = useRef(null);
   const navigate = useNavigate();
 
-  // tieni i ref aggiornati ad ogni render
   useEffect(() => { routeRef.current = route; }, [route]);
   useEffect(() => { gameRef.current  = game;  }, [game]);
 
@@ -33,7 +32,6 @@ function GamePage() {
       .catch(err => console.error(err));
   }, []);
 
-  // funzione di submit separata che usa i ref — nessuna stale closure
   const doSubmit = async (currentRoute, currentGame) => {
     clearInterval(timerRef.current);
     if (!currentGame) return;
@@ -49,10 +47,8 @@ function GamePage() {
     }
   };
 
-  // timer
   useEffect(() => {
     if (phase !== 'planning') return;
-
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
@@ -63,18 +59,15 @@ function GamePage() {
         return t - 1;
       });
     }, 1000);
-
     return () => clearInterval(timerRef.current);
   }, [phase]);
 
-  // step 1: quando entra in execution, muovi il treno alla prima stazione dopo 800ms
   useEffect(() => {
     if (phase !== 'execution' || !routeValid || steps.length === 0) return;
     const t = setTimeout(() => setExecStep(1), 800);
     return () => clearTimeout(t);
   }, [phase, routeValid, steps]);
 
-  // step 2: quando execStep cambia, mostra il popup dopo 700ms (tempo animazione treno)
   useEffect(() => {
     if (phase !== 'execution' || execStep === 0 || !routeValid) return;
     const t = setTimeout(() => setShowEvent(true), 700);
@@ -138,42 +131,45 @@ function GamePage() {
       )
     : [];
 
-  return (
-    <Container fluid className="mt-4 px-4">
-      <h2>🚇 Last Race</h2>
+  const currentStep = steps[execStep - 1];
 
+  return (
+    <div style={{ padding: '2rem 2.5rem' }}>
+
+      {/* ===== SETUP ===== */}
       {phase === 'setup' && (
-        <>
-          <p className="text-muted">Study the network map carefully before starting!</p>
-          <NetworkMap network={network} showLines={true} />
-          <div className="text-center mt-4">
-            <Button
-              size="lg"
-              onClick={handleStartPlanning}
-              style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
-            >
-              Start!
-            </Button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ marginBottom: '0.25rem' }}>🚇 Last Race</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>
+              Study the network carefully before starting
+            </p>
           </div>
-        </>
+          <NetworkMap network={network} showLines={true} />
+          <button className="btn btn-gold" style={{ fontSize: '1em', padding: '0.6rem 2.5rem' }} onClick={handleStartPlanning}>
+            Start →
+          </button>
+        </div>
       )}
 
+      {/* ===== PLANNING ===== */}
       {phase === 'planning' && game && (
         <>
-          <Row className="mb-3 align-items-center">
-            <Col>
-              <span className="me-3">🚉 From: <strong>{game.startStation.name}</strong></span>
-              <span>🏁 To: <strong>{game.endStation.name}</strong></span>
-            </Col>
-            <Col className="text-end">
-              <Badge bg={timeLeft <= 10 ? 'danger' : 'dark'} style={{ fontSize: '1.1em' }}>
-                ⏱ {timeLeft}s
-              </Badge>
-            </Col>
-          </Row>
+          {/* header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9em' }}>
+              <span style={{ color: 'var(--text-muted)' }}>From <strong style={{ color: 'var(--text)' }}>{game.startStation.name}</strong></span>
+              <span style={{ color: 'var(--text-muted)' }}>To <strong style={{ color: 'var(--text)' }}>{game.endStation.name}</strong></span>
+            </div>
+            <span className={`timer-badge ${timeLeft <= 10 ? 'danger' : ''}`}>
+              ⏱ {timeLeft}s
+            </span>
+          </div>
 
-          <Row>
-            <Col md={8}>
+          {/* layout */}
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+            {/* map */}
+            <div style={{ flex: 1 }}>
               <NetworkMap
                 network={network}
                 showLines={false}
@@ -181,79 +177,77 @@ function GamePage() {
                 startStationId={game.startStation.id}
                 endStationId={game.endStation.id}
               />
-            </Col>
-            <Col md={4}>
-              <h6>Your route:</h6>
-              <p className="text-muted" style={{ fontSize: '0.85em' }}>
-                {route.map(id => network.stations.find(s => s.id === id)?.name).join(' → ')}
-              </p>
+            </div>
 
-              <h6>Available segments:</h6>
-              <ListGroup style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {availableSegments.map((seg, i) => (
-                  <ListGroup.Item
-                    key={i}
-                    action
-                    onClick={() => handleSegmentClick(seg.from_id, seg.to_id)}
-                    style={{ cursor: 'pointer', fontSize: '0.85em' }}
-                  >
-                    {(() => {
-                      const currentName = seg.from_id === lastStation ? seg.from_name : seg.to_name;
-                      const nextName    = seg.from_id === lastStation ? seg.to_name   : seg.from_name;
-                      return (
-                        <>
-                          <strong style={{ color: '#e67e22' }}>{currentName}</strong>
-                          {' → '}
-                          {nextName}
-                        </>
-                      );
-                    })()}
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-
-              <div className="mt-3 d-flex gap-2">
-                <Button variant="outline-secondary" size="sm" onClick={handleUndo}>
-                  ↩ Undo
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSubmit}
-                  style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
-                >
-                  Submit Route
-                </Button>
+            {/* sidebar */}
+            <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* current route */}
+              <div className="card-dark" style={{ padding: '1rem' }}>
+                <p style={{ fontSize: '0.7em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                  Your route
+                </p>
+                <p style={{ fontSize: '0.82em', color: 'var(--text)', margin: 0, lineHeight: 1.7 }}>
+                  {route.map(id => network.stations.find(s => s.id === id)?.name).join(' → ')}
+                </p>
               </div>
-            </Col>
-          </Row>
+
+              {/* segments */}
+              <div>
+                <p style={{ fontSize: '0.7em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                  Available segments
+                </p>
+                <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                  {availableSegments.map((seg, i) => {
+                    const currentName = seg.from_id === lastStation ? seg.from_name : seg.to_name;
+                    const nextName    = seg.from_id === lastStation ? seg.to_name   : seg.from_name;
+                    return (
+                      <div
+                        key={i}
+                        className="segment-item"
+                        onClick={() => handleSegmentClick(seg.from_id, seg.to_id)}
+                      >
+                        <strong style={{ color: 'var(--accent)' }}>{currentName}</strong>
+                        <span style={{ color: 'var(--text-muted)' }}> → </span>
+                        <span>{nextName}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* actions */}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '0.82em', padding: '0.4rem 0.9rem', flex: 1 }} onClick={handleUndo}>
+                  ↩ Undo
+                </button>
+                <button className="btn btn-gold" style={{ fontSize: '0.82em', padding: '0.4rem 0.9rem', flex: 1 }} onClick={handleSubmit}>
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
         </>
       )}
 
+      {/* ===== EXECUTION ===== */}
       {phase === 'execution' && game && (
         <>
-          <Row className="mb-3 align-items-center">
-            <Col>
-              <span className="me-3">🚉 From: <strong>{game.startStation.name}</strong></span>
-              <span>🏁 To: <strong>{game.endStation.name}</strong></span>
-            </Col>
-            <Col className="text-end">
-              <Badge bg="dark" style={{ fontSize: '1em' }}>
-                🪙 {execStep > 0 ? steps[execStep - 1]?.coinsAfter : 20}
-              </Badge>
-            </Col>
-          </Row>
+          {/* header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9em' }}>
+              <span style={{ color: 'var(--text-muted)' }}>From <strong style={{ color: 'var(--text)' }}>{game.startStation.name}</strong></span>
+              <span style={{ color: 'var(--text-muted)' }}>To <strong style={{ color: 'var(--text)' }}>{game.endStation.name}</strong></span>
+            </div>
+            <span className="timer-badge">
+              🪙 {execStep > 0 ? steps[execStep - 1]?.coinsAfter : 20}
+            </span>
+          </div>
 
           {!routeValid ? (
-            <div className="text-center mt-5">
-              <h4 className="text-danger">❌ Invalid or incomplete route!</h4>
-              <p>You lose all your coins.</p>
-              <Button
-                className="mt-3"
-                style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
-                onClick={() => setPhase('result')}
-              >
-                See Result
-              </Button>
+            <div style={{ textAlign: 'center', marginTop: '4rem' }}>
+              <h4 style={{ color: 'var(--danger)', marginBottom: '0.75rem' }}>❌ Invalid or incomplete route</h4>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>You lose all your coins.</p>
+              <button className="btn btn-ghost" onClick={() => setPhase('result')}>See Result</button>
             </div>
           ) : (
             <>
@@ -266,48 +260,38 @@ function GamePage() {
                 executionStep={execStep}
               />
 
-              {/* POPUP EVENTO */}
-              <Modal
-                show={showEvent && !!steps[execStep - 1]}
-                centered
-                backdrop="static"
-                keyboard={false}
-              >
-                {steps[execStep - 1] && (
+              {/* EVENT MODAL */}
+              <Modal show={showEvent && !!currentStep} centered backdrop="static" keyboard={false}>
+                {currentStep && (
                   <>
-                    <Modal.Header style={{ background: '#1a1a2e', borderBottom: '1px solid #333', color: '#fff' }}>
-                      <Modal.Title style={{ fontSize: '0.95em', color: '#888' }}>
-                        {network.stations.find(s => s.id === steps[execStep - 1].fromStation)?.name}
+                    <Modal.Header style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
+                      <Modal.Title style={{ fontSize: '0.85em', color: 'var(--text-muted)', fontWeight: 400 }}>
+                        {network.stations.find(s => s.id === currentStep.fromStation)?.name}
                         {' ➔ '}
-                        {network.stations.find(s => s.id === steps[execStep - 1].toStation)?.name}
+                        {network.stations.find(s => s.id === currentStep.toStation)?.name}
                       </Modal.Title>
                     </Modal.Header>
-
-                    <Modal.Body style={{ background: '#1a1a2e', color: '#fff', textAlign: 'center', padding: '2rem' }}>
-                      <p style={{ fontSize: '1.1em', lineHeight: 1.6 }}>
-                        {steps[execStep - 1].eventDescription}
+                    <Modal.Body style={{ background: 'var(--bg-card)', textAlign: 'center', padding: '2rem 2.5rem' }}>
+                      <p style={{ fontSize: '1.05em', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                        {currentStep.eventDescription}
                       </p>
                       <div style={{
-                        fontSize: '2em',
-                        fontWeight: 'bold',
-                        color: steps[execStep - 1].eventEffect >= 0 ? '#2ecc71' : '#e74c3c',
-                        margin: '1rem 0'
+                        fontSize: '2.5em',
+                        fontWeight: 700,
+                        color: currentStep.eventEffect >= 0 ? 'var(--success)' : 'var(--danger)',
+                        letterSpacing: '-0.02em',
+                        marginBottom: '0.5rem'
                       }}>
-                        {steps[execStep - 1].eventEffect >= 0 ? '+' : ''}
-                        {steps[execStep - 1].eventEffect} 🪙
+                        {currentStep.eventEffect >= 0 ? '+' : ''}{currentStep.eventEffect} 🪙
                       </div>
-                      <div style={{ color: '#aaa', fontSize: '0.95em' }}>
-                        Total: <strong style={{ color: '#fff' }}>{steps[execStep - 1].coinsAfter} 🪙</strong>
-                      </div>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9em', margin: 0 }}>
+                        Total: <strong style={{ color: 'var(--text)' }}>{currentStep.coinsAfter} 🪙</strong>
+                      </p>
                     </Modal.Body>
-
-                    <Modal.Footer style={{ background: '#1a1a2e', borderTop: '1px solid #333', justifyContent: 'center' }}>
-                      <Button
-                        onClick={handleEventContinue}
-                        style={{ backgroundColor: '#ffd700', border: 'none', color: '#1a1a2e', fontWeight: 'bold', padding: '0.5rem 2rem' }}
-                      >
-                        {execStep < steps.length ? 'Continue ➡' : 'See Result 🏁'}
-                      </Button>
+                    <Modal.Footer style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', justifyContent: 'center' }}>
+                      <button className="btn btn-gold" style={{ padding: '0.5rem 2.5rem' }} onClick={handleEventContinue}>
+                        {execStep < steps.length ? 'Continue →' : 'See Result 🏁'}
+                      </button>
                     </Modal.Footer>
                   </>
                 )}
@@ -315,31 +299,28 @@ function GamePage() {
 
               {/* EVENT LOG */}
               {eventLog.length > 0 && (
-                <div className="mt-4">
-                  <h6 style={{ color: '#aaa' }}>Event Log</h6>
-                  <Row className="g-2">
+                <div style={{ marginTop: '2rem' }}>
+                  <p style={{ fontSize: '0.7em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                    Event Log
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.5rem' }}>
                     {eventLog.map((ev, i) => (
-                      <Col key={i} xs={12} md={6} lg={4}>
-                        <div
-                          className="event-log-item p-2 rounded"
-                          style={{ background: '#1a1a2e', border: '1px solid #333', fontSize: '0.82em', color: '#ccc' }}
-                        >
-                          <div style={{ color: '#666', marginBottom: '0.2rem' }}>
-                            {network.stations.find(s => s.id === ev.fromStation)?.name}
-                            {' → '}
-                            {network.stations.find(s => s.id === ev.toStation)?.name}
-                          </div>
-                          <div style={{ marginBottom: '0.3rem' }}>{ev.eventDescription}</div>
-                          <span style={{ fontWeight: 'bold', color: ev.eventEffect >= 0 ? '#2ecc71' : '#e74c3c' }}>
-                            {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
-                          </span>
-                          <span style={{ color: '#888', marginLeft: '0.5rem' }}>
-                            → {ev.coinsAfter} 🪙
-                          </span>
+                      <div key={i} className="event-log-item">
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.78em', marginBottom: '0.3rem' }}>
+                          {network.stations.find(s => s.id === ev.fromStation)?.name}
+                          {' → '}
+                          {network.stations.find(s => s.id === ev.toStation)?.name}
                         </div>
-                      </Col>
+                        <div style={{ marginBottom: '0.4rem', lineHeight: 1.5 }}>{ev.eventDescription}</div>
+                        <span style={{ fontWeight: 600, color: ev.eventEffect >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                          {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
+                        </span>
+                        <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.85em' }}>
+                          → {ev.coinsAfter} 🪙
+                        </span>
+                      </div>
                     ))}
-                  </Row>
+                  </div>
                 </div>
               )}
             </>
@@ -347,73 +328,58 @@ function GamePage() {
         </>
       )}
 
+      {/* ===== RESULT ===== */}
       {phase === 'result' && game && (
-        <div className="text-center mt-5">
-          <h2>🏁 Race Complete!</h2>
-          <p className="text-muted">
-            {game.startStation.name} → {game.endStation.name}
-          </p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', marginTop: '3rem' }}>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ marginBottom: '0.25rem' }}>🏁 Race Complete</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9em', margin: 0 }}>
+              {game.startStation.name} → {game.endStation.name}
+            </p>
+          </div>
 
-          <div style={{
-            display: 'inline-block',
-            background: '#1a1a2e',
-            border: '1px solid #444',
-            borderRadius: '18px',
-            padding: '2rem 3rem',
-            margin: '1.5rem 0'
-          }}>
-            <div style={{ fontSize: '0.9em', color: '#aaa', marginBottom: '0.5rem' }}>Final Score</div>
-            <div style={{ fontSize: '3.5em', fontWeight: 'bold', color: '#ffd700' }}>
-              {finalScore} 🪙
-            </div>
+          <div className="score-card">
+            <div className="label">Final Score</div>
+            <div className="value">{finalScore} 🪙</div>
           </div>
 
           {eventLog.length > 0 && (
-            <div className="mt-3 text-start">
-              <h6 style={{ color: '#aaa' }}>Event Log</h6>
-              <Row className="g-2">
+            <div style={{ width: '100%' }}>
+              <p style={{ fontSize: '0.7em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                Event Log
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.5rem' }}>
                 {eventLog.map((ev, i) => (
-                  <Col key={i} xs={12} md={6} lg={4}>
-                    <div
-                      className="event-log-item p-2 rounded"
-                      style={{ background: '#1a1a2e', border: '1px solid #333', fontSize: '0.82em', color: '#ccc' }}
-                    >
-                      <div style={{ color: '#666', marginBottom: '0.2rem' }}>
-                        {network.stations.find(s => s.id === ev.fromStation)?.name}
-                        {' → '}
-                        {network.stations.find(s => s.id === ev.toStation)?.name}
-                      </div>
-                      <div style={{ marginBottom: '0.3rem' }}>{ev.eventDescription}</div>
-                      <span style={{ fontWeight: 'bold', color: ev.eventEffect >= 0 ? '#2ecc71' : '#e74c3c' }}>
-                        {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
-                      </span>
-                      <span style={{ color: '#888', marginLeft: '0.5rem' }}>
-                        → {ev.coinsAfter} 🪙
-                      </span>
+                  <div key={i} className="event-log-item">
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.78em', marginBottom: '0.3rem' }}>
+                      {network.stations.find(s => s.id === ev.fromStation)?.name}
+                      {' → '}
+                      {network.stations.find(s => s.id === ev.toStation)?.name}
                     </div>
-                  </Col>
+                    <div style={{ marginBottom: '0.4rem', lineHeight: 1.5 }}>{ev.eventDescription}</div>
+                    <span style={{ fontWeight: 600, color: ev.eventEffect >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                      {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.85em' }}>
+                      → {ev.coinsAfter} 🪙
+                    </span>
+                  </div>
                 ))}
-              </Row>
+              </div>
             </div>
           )}
 
-          <div className="mt-4 d-flex gap-3 justify-content-center">
-            <Button
-              onClick={handleStartPlanning}
-              style={{ backgroundColor: '#1a1a2e', border: '1px solid #fff', color: '#fff' }}
-            >
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-ghost" onClick={handleStartPlanning}>
               Play Again
-            </Button>
-            <Button
-              variant="warning"
-              onClick={() => navigate('/leaderboard')}
-            >
+            </button>
+            <button className="btn btn-gold" onClick={() => navigate('/leaderboard')}>
               🏆 Leaderboard
-            </Button>
+            </button>
           </div>
         </div>
       )}
-    </Container>
+    </div>
   );
 }
 
