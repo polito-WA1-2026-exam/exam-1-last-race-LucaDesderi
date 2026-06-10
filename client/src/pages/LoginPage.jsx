@@ -18,7 +18,7 @@ function LoginPage() {
       const user = await login(username, password);
       setUser(user);
       navigate('/');
-    } catch (ex) {
+    } catch  {
       setError('Invalid username or password.');
     }
   };

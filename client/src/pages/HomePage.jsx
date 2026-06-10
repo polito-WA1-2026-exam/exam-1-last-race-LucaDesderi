@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import { useUser } from '../contexts/UserContext'
+import { IoMdTrain } from "react-icons/io";
+
 
 function HomePage() {
   const { user } = useUser();
 
   return (
     <div style={{ maxWidth: '680px', margin: '5rem auto', padding: '0 2rem' }}>
-      <h1 style={{ fontSize: '2.8em', marginBottom: '0.3rem' }}>🚇 Last Race</h1>
+      <h1 style={{ fontSize: '2.8em', marginBottom: '0.3rem' }}><IoMdTrain /> Last Race</h1>
       <p style={{ color: 'var(--text-muted)', fontSize: '1.05em', marginBottom: '2.5rem' }}>
         Plan your route through the metro network before time runs out.
       </p>

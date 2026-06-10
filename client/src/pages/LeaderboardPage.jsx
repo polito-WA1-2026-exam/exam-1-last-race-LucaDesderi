@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getLeaderboard } from '../api/api'
+import { BiSolidCoin } from "react-icons/bi";
+import { GiLaurelsTrophy } from "react-icons/gi";
 
 function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -13,7 +15,7 @@ function LeaderboardPage() {
 
   return (
     <div style={{ maxWidth: '600px', margin: '4rem auto', padding: '0 2rem' }}>
-      <h2 style={{ marginBottom: '0.25rem' }}>🏆 Leaderboard</h2>
+      <h2 style={{ marginBottom: '0.25rem' }}><GiLaurelsTrophy /> Leaderboard</h2>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.9em', marginBottom: '2rem' }}>
         Best score per player
       </p>
@@ -38,7 +40,7 @@ function LeaderboardPage() {
                   <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
                     {entry.best_score}
                   </span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85em', marginLeft: '0.3rem' }}>🪙</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85em', marginLeft: '0.3rem' }}><BiSolidCoin /></span>
                 </td>
               </tr>
             ))}

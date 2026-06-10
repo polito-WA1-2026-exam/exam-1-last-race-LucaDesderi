@@ -3,6 +3,8 @@ import { Modal } from 'react-bootstrap'
 import { getNetwork, startGame, submitRoute } from '../api/api'
 import NetworkMap from '../components/NetworkMap'
 import { useNavigate } from 'react-router-dom'
+import { BiSolidCoin } from "react-icons/bi";
+import { IoMdTrain } from "react-icons/io";
 
 function GamePage() {
   const [network, setNetwork] = useState(null);
@@ -46,7 +48,7 @@ function GamePage() {
       console.error(err);
     }
   };
-
+ 
   useEffect(() => {
     if (phase !== 'planning') return;
     timerRef.current = setInterval(() => {
@@ -140,7 +142,7 @@ function GamePage() {
       {phase === 'setup' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
           <div style={{ textAlign: 'center' }}>
-            <h2 style={{ marginBottom: '0.25rem' }}>🚇 Last Race</h2>
+            <h2 style={{ marginBottom: '0.25rem' }}><IoMdTrain /> Last Race</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>
               Study the network carefully before starting
             </p>
@@ -239,7 +241,7 @@ function GamePage() {
               <span style={{ color: 'var(--text-muted)' }}>To <strong style={{ color: 'var(--text)' }}>{game.endStation.name}</strong></span>
             </div>
             <span className="timer-badge">
-              🪙 {execStep > 0 ? steps[execStep - 1]?.coinsAfter : 20}
+              <BiSolidCoin /> {execStep > 0 ? steps[execStep - 1]?.coinsAfter : 20}
             </span>
           </div>
 
@@ -282,10 +284,10 @@ function GamePage() {
                         letterSpacing: '-0.02em',
                         marginBottom: '0.5rem'
                       }}>
-                        {currentStep.eventEffect >= 0 ? '+' : ''}{currentStep.eventEffect} 🪙
+                        {currentStep.eventEffect >= 0 ? '+' : ''}{currentStep.eventEffect} <BiSolidCoin />
                       </div>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.9em', margin: 0 }}>
-                        Total: <strong style={{ color: 'var(--text)' }}>{currentStep.coinsAfter} 🪙</strong>
+                        Total: <strong style={{ color: 'var(--text)' }}>{currentStep.coinsAfter} <BiSolidCoin /></strong>
                       </p>
                     </Modal.Body>
                     <Modal.Footer style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', justifyContent: 'center' }}>
@@ -313,10 +315,10 @@ function GamePage() {
                         </div>
                         <div style={{ marginBottom: '0.4rem', lineHeight: 1.5 }}>{ev.eventDescription}</div>
                         <span style={{ fontWeight: 600, color: ev.eventEffect >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                          {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
+                          {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} <BiSolidCoin />
                         </span>
                         <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.85em' }}>
-                          → {ev.coinsAfter} 🪙
+                          → {ev.coinsAfter} <BiSolidCoin />
                         </span>
                       </div>
                     ))}
@@ -340,7 +342,7 @@ function GamePage() {
 
           <div className="score-card">
             <div className="label">Final Score</div>
-            <div className="value">{finalScore} 🪙</div>
+            <div className="value">{finalScore} <BiSolidCoin /></div>
           </div>
 
           {eventLog.length > 0 && (
@@ -358,10 +360,10 @@ function GamePage() {
                     </div>
                     <div style={{ marginBottom: '0.4rem', lineHeight: 1.5 }}>{ev.eventDescription}</div>
                     <span style={{ fontWeight: 600, color: ev.eventEffect >= 0 ? 'var(--success)' : 'var(--danger)' }}>
-                      {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} 🪙
+                      {ev.eventEffect >= 0 ? '+' : ''}{ev.eventEffect} <BiSolidCoin />
                     </span>
                     <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.85em' }}>
-                      → {ev.coinsAfter} 🪙
+                      → {ev.coinsAfter} <BiSolidCoin />
                     </span>
                   </div>
                 ))}
@@ -374,7 +376,7 @@ function GamePage() {
               Play Again
             </button>
             <button className="btn btn-gold" onClick={() => navigate('/leaderboard')}>
-              🏆 Leaderboard
+              Leaderboard
             </button>
           </div>
         </div>
