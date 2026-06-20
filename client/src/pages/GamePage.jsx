@@ -127,10 +127,21 @@ function GamePage() {
   };
 
   const lastStation = route[route.length - 1];
+
+  const usedSegmentKeys = new Set();
+  for (let i = 0; i < route.length - 1; i++) {
+    const a = route[i];
+    const b = route[i + 1];
+    usedSegmentKeys.add(`${a}-${b}`);
+    usedSegmentKeys.add(`${b}-${a}`);
+  }
+
   const availableSegments = network
-    ? network.segments.filter(seg =>
-        seg.from_id === lastStation || seg.to_id === lastStation
-      )
+    ? network.segments.filter(seg => {
+        const touchesLastStation = seg.from_id === lastStation || seg.to_id === lastStation;
+        const key = `${seg.from_id}-${seg.to_id}`;
+        return touchesLastStation && !usedSegmentKeys.has(key);
+      })
     : [];
 
   const currentStep = steps[execStep - 1];
