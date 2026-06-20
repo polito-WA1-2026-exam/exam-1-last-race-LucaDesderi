@@ -55,7 +55,6 @@
 ## Screenshots
 
 ### Leaderboard
-yet to had cause i want to make it more pretty
 ![Leaderboard](screenshots/leaderboard.png)
 
 ### During a game
