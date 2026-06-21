@@ -6,6 +6,7 @@ import session from "express-session";
 import passport from "passport";
 import LocalStrategy from "passport-local";
 import bcrypt from "bcrypt";
+import { check, validationResult } from "express-validator";
 
 import { getUser, getNetwork, getSegments, createGame, getStationById, getGameById, getEvents, saveGameResult, saveGameSteps, getLeaderboard } from "./dao.js";
 
@@ -50,7 +51,16 @@ app.use(passport.authenticate("session"));
 /* ROUTES */
 
 // POST /api/sessions
-app.post("/api/sessions", passport.authenticate("local"), function (req, res) {
+app.post("/api/sessions", [
+  check("username").notEmpty(),
+  check("password").notEmpty()
+], (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  next();
+}, passport.authenticate("local"), function (req, res) {
   return res.status(201).json(req.user);
 });
 
@@ -141,7 +151,14 @@ app.post("/api/games", isLoggedIn, async (req, res) => {
 });
 
 // POST /api/games/:id/submit
-app.post("/api/games/:id/submit", isLoggedIn, async (req, res) => {
+app.post("/api/games/:id/submit", isLoggedIn, [
+  check("route").isArray({ min: 1 }),
+  check("route.*").isInt()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
   try {
     const gameId = Number(req.params.id);
     const route = req.body.route; // array di station id es. [8, 13, 14, 9]
